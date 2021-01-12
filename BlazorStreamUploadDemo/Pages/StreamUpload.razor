@@ -1,10 +1,82 @@
-﻿<h3>StreamUpload</h3>
+﻿@inject IJSRuntime JS
+@using System.Text
+@using Serilog
+@implements IAsyncDisposable
 
-<div class="flex-column">
-    <input type="text" id="demoSource" placeholder="Type some text here" class="form-control form-text p-1 m-1">
-    <button type="button" onclick="" class="form-control btn btn-primary p-1 m-1">Send</button>
+<div class="container-fluid">
+    <div class="d-flex flex-column">
+        <div class="form-group row align-content-center ">
+            <label for="@demoSourceId" class="col-sm-auto col-form-label">Source:</label>
+            <div class="col-sm">
+                <input type="text" id="@demoSourceId" placeholder="Type some text here" class="form-control form-text p-1 m-1">
+            </div>
+        </div>
+        <div class="align-content-center">
+            <button type="button" @onclick="StartStream" class="form-control btn btn-primary p-1 m-1">Send</button>
+        </div>
+        <div class="form-group row align-content-center">
+            <label for="@demoDestId" class="col-auto col-form-label">Result:</label>
+            <div class="col">
+                <input type="text" id="@demoDestId" class="form-control form-control-plaintext p-1 m-1" @bind="receiveText"/>
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
+
+    private readonly string demoSourceId = Guid.NewGuid().ToString();
+    private readonly string demoDestId = Guid.NewGuid().ToString();
+    private IJSObjectReference _generatorModule;
+    private IJSObjectReference _generator;
+    private string receiveText;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            var importPath = "./";
+            _generatorModule = await JS.InvokeAsync<IJSObjectReference>("import", $"{importPath}/frontSender.js");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_generator != null)
+        {
+            await _generator.DisposeAsync().ConfigureAwait(false);
+        }
+        if (_generatorModule != null)
+        {
+            await _generatorModule.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    class GeneratorResponse
+    {
+        public string Value { get; set; }
+        public bool Done { get; set; }
+    }
+
+    private async Task StartStream()
+    {
+        _generator = await _generatorModule.InvokeAsync<IJSObjectReference>("createStreamGenerator", demoSourceId);
+
+        var stringBuilder = new StringBuilder();
+        bool finished;
+        do
+        {
+            var fetched = await _generator.InvokeAsync<GeneratorResponse>("next");
+            finished = fetched.Done;
+            stringBuilder.Append(fetched.Value);
+        } while (!finished);
+
+        var result = stringBuilder.ToString();
+
+        Log.Information("Received: {0}", result);
+
+        receiveText = result;
+    }
 
 }
