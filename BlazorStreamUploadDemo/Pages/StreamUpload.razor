@@ -61,8 +61,8 @@
 
     private async Task StartStream()
     {
-        _generator = await _generatorModule.InvokeAsync<IJSObjectReference>("createStreamGenerator", demoSourceId);
-
+        const int chunkSize = 10;
+        _generator = await _generatorModule.InvokeAsync<IJSObjectReference>("createStreamGenerator", demoSourceId, chunkSize);
         var stringBuilder = new StringBuilder();
         bool finished;
         do
