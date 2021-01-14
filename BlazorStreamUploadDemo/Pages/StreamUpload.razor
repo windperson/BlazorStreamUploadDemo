@@ -2,7 +2,7 @@
 @using System.Text
 @using Microsoft.AspNetCore.SignalR
 @using Microsoft.Extensions.Options
-@inject IOptions<HubOptions> hubOptionsAccessor
+@inject Func<HubOptions> hubOptionsProvider
 @using Serilog
 @implements IAsyncDisposable
 
@@ -64,8 +64,7 @@
 
     private async Task StartStream()
     {
-        var hubOptions = hubOptionsAccessor.Value;
-        var chunkSize = Convert.ToInt64(hubOptions.MaximumReceiveMessageSize * 0.95);
+        var chunkSize = CalculateChunkSize(hubOptionsProvider(), 0.95);
         Log.Information("Chunk size: {0}", chunkSize);
         _generator = await _generatorModule.InvokeAsync<IJSObjectReference>("createStreamGenerator", demoSourceId, chunkSize);
         var stringBuilder = new StringBuilder();
@@ -82,6 +81,13 @@
         Log.Information("Received: {0}", result);
 
         receiveText = result;
+    }
+
+    private long CalculateChunkSize(HubOptions hubOptions, double percent)
+    {
+        var chunkSize = Convert.ToInt64(hubOptions.MaximumReceiveMessageSize * percent);
+        chunkSize = chunkSize > 0 ? chunkSize : 1;
+        return chunkSize;
     }
 
 }

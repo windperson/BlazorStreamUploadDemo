@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using BlazorStreamUploadDemo.Data;
+using Microsoft.AspNetCore.SignalR;
 
 namespace BlazorStreamUploadDemo
 {
@@ -26,9 +27,18 @@ namespace BlazorStreamUploadDemo
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            var myHubOptions = new HubOptions();
+
             services.AddRazorPages();
-            services.AddServerSideBlazor();
+            services.AddServerSideBlazor().AddHubOptions(options =>
+            {
+                options.MaximumReceiveMessageSize = 16 * 1024;
+                
+                myHubOptions.MaximumReceiveMessageSize = options.MaximumReceiveMessageSize;
+            });
             services.AddSingleton<WeatherForecastService>();
+
+            services.AddScoped<Func<HubOptions>>(_ => () => myHubOptions);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
