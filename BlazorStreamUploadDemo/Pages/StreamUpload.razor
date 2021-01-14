@@ -1,5 +1,8 @@
 ﻿@inject IJSRuntime JS
 @using System.Text
+@using Microsoft.AspNetCore.SignalR
+@using Microsoft.Extensions.Options
+@inject IOptions<HubOptions> hubOptionsAccessor
 @using Serilog
 @implements IAsyncDisposable
 
@@ -61,7 +64,9 @@
 
     private async Task StartStream()
     {
-        const int chunkSize = 10;
+        var hubOptions = hubOptionsAccessor.Value;
+        var chunkSize = Convert.ToInt64(hubOptions.MaximumReceiveMessageSize * 0.95);
+        Log.Information("Chunk size: {0}", chunkSize);
         _generator = await _generatorModule.InvokeAsync<IJSObjectReference>("createStreamGenerator", demoSourceId, chunkSize);
         var stringBuilder = new StringBuilder();
         bool finished;
